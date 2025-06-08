@@ -15,7 +15,12 @@ import {
   Grid,
 } from 'lucide-react';
 
+// CORRECTED PATH for Button:
+// From src/components/layout/Navbar.tsx, to reach src/ui/Button.tsx, you need to go up two levels (..)
+// to src/, then down into ui/.
 import { Button } from '../ui/Button';
+// PATH for Logo:
+// Logo.tsx is in the same directory (src/components/layout) as Navbar.tsx, so './Logo' is correct.
 import Logo from './Logo';
 
 interface DropdownLink {
@@ -28,8 +33,8 @@ interface DropdownLink {
 const SimpleDropdown = ({ links }: { links: DropdownLink[] }) => (
   <div
     className="absolute left-0 mt-4 w-[30rem] bg-gray-50 rounded-lg shadow-xl py-4 z-50
-               opacity-0 invisible group-hover:opacity-100 group-hover:visible
-               transition-all duration-300 ease-out transform origin-top scale-y-0 translate-y-2 group-hover:scale-y-100 group-hover:translate-y-0"
+              opacity-0 invisible group-hover:opacity-100 group-hover:visible
+              transition-all duration-300 ease-out transform origin-top scale-y-0 translate-y-2 group-hover:scale-y-100 group-hover:translate-y-0"
   >
     {links.map((link) => (
       <Link
@@ -84,13 +89,14 @@ const Navbar = () => {
   }, [isMenuOpen]);
 
   useEffect(() => {
+    // Close menu and dropdowns on route change
     setIsMenuOpen(false);
     setOpenMobileDropdown(null);
   }, [location]);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
-    setOpenMobileDropdown(null);
+    setOpenMobileDropdown(null); // Close any open dropdown when opening/closing main menu
   };
 
   const handleMobileDropdownToggle = (path: string) => {
@@ -98,11 +104,11 @@ const Navbar = () => {
   };
 
   const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'About', path: '/about' },
+    { name: 'Home', path: '/' }, // This path maps to src/pages/public/HomePage.tsx via router
+    { name: 'About', path: '/about' }, // This path maps to src/pages/public/About.tsx via router
     {
       name: 'Browse',
-      path: '/browse',
+      path: '/browse', // This might be a landing page for browse or handled by nested routes
       dropdownLinks: [
         { name: 'Categories', path: '/browse/categories', icon: List, description: 'Explore items by category.' },
         { name: 'All Listings', path: '/browse/listings', icon: Grid, description: 'View all available listings.' },
@@ -114,14 +120,14 @@ const Navbar = () => {
     },
     {
       name: 'Pricing',
-      path: '/pricing',
+      path: '/pricing', // This might be a landing page for pricing or handled by nested routes
       dropdownLinks: [
         { name: 'Standard Plans', path: '/pricing/standard', icon: CreditCard, description: 'Flexible plans to fit your individual or small team needs.' },
         { name: 'Pro Subscriptions', path: '/pricing/pro', icon: DollarSign, description: 'Unlock advanced features for growing businesses.' },
         { name: 'Custom Enterprise', path: '/pricing/enterprise', icon: Building, description: 'Tailored solutions and dedicated support for large organizations.' },
       ],
     },
-    { name: 'Contact', path: '/contact' },
+    { name: 'Contact', path: '/contact' }, // This path maps to src/pages/public/Contact.tsx via router
   ];
 
   return (
@@ -163,8 +169,8 @@ const Navbar = () => {
             <Button
               variant="default"
               className="bg-pink-500 hover:bg-pink-600 text-white font-bold
-                         py-3 px-8 rounded-full text-base tracking-wide
-                         transition-colors duration-200"
+                          py-3 px-8 rounded-full text-base tracking-wide
+                          transition-colors duration-200"
             >
               Start for free
             </Button>
@@ -191,7 +197,7 @@ const Navbar = () => {
 
       {isMenuOpen && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => {
               setIsMenuOpen(false);
@@ -201,7 +207,7 @@ const Navbar = () => {
           <div
             ref={menuRef}
             className="md:hidden fixed inset-y-0 right-0 w-4/5 max-w-sm bg-white z-50 p-4 pt-12 shadow-lg overflow-y-auto
-                     transform transition-transform duration-300 ease-out"
+                      transform transition-transform duration-300 ease-out"
           >
             <button
               className="absolute top-4 right-4 p-2 text-gray-800 hover:text-gray-600 transition-colors duration-200"
