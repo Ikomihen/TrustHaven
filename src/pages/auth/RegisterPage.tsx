@@ -1,87 +1,37 @@
-// trusthaven-frontend/src/pages/auth/RegisterPage.tsx
-
-import React, { useState, useRef, useEffect } from 'react';
+ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowRight, Globe, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-// IMPORTANT: Ensure this imports your custom Axios instance from src/api/axios.js
-import axios from '../../api/axios'; // Corrected import to use your custom instance
+import axios from '../../api/axios';
 
-// Firebase Client SDK Imports
+// Firebase imports
 import {
   GoogleAuthProvider,
   signInWithPopup,
   RecaptchaVerifier,
   signInWithPhoneNumber,
-  AuthError,
+  createUserWithEmailAndPassword,
+  updateProfile,
   ConfirmationResult,
 } from 'firebase/auth';
 import { doc, setDoc, Timestamp, getDoc } from 'firebase/firestore';
-// Import auth, db, AND firebaseConfig from your firebase.ts file
-// Ensure this path (../../../firebase/firebase) is correct relative to RegisterPage.tsx
 import { auth, db } from '../../../firebase/firebase';
-import { UserRole } from '../../types'; // Ensure you have this type defined, e.g., export type UserRole = 'explorer' | 'pioneer' | 'guardian';
+import { UserRole } from '../../types';
 
-// Define a type for your form data
 interface RegisterFormData {
   fullName: string;
   email: string;
-  phone: string; // This 'phone' is only used if registering via email/password
+  phone: string;
   password: string;
   confirmPassword: string;
   agreeToTerms: boolean;
   selectedRole: UserRole;
 }
 
-// Declare window.recaptchaVerifier globally for Firebase RecaptchaVerifier
-declare global {
-  interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
-    // Add any other global properties if necessary
-  }
-}
-
-
 const RegisterPage: React.FC = () => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // State for global toast messages (success/error)
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastType, setToastType] = useState<'success' | 'error' | null>(null);
-  const [showToast, setShowToast] = useState(false);
-
-  // Effect to hide the toast after a few seconds
-  useEffect(() => {
-    if (showToast) {
-      const timer = setTimeout(() => {
-        setShowToast(false);
-        setToastMessage(null);
-        setToastType(null);
-      }, 5000); // Hide after 5 seconds
-      return () => clearTimeout(timer);
-    }
-  }, [showToast]);
-
-  // Function to show toast
-  const displayToast = (message: string, type: 'success' | 'error') => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
-  };
-
-  // State to manage which authentication method's UI is active
-  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email'); // 'email' or 'phone'
-
-  // State for phone authentication specific inputs
-  const [phoneInput, setPhoneInput] = useState('');
-  const [otp, setOtp] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
-
-
+  const navigate = useNavigate();
+  
+  // Consolidated state
   const [formData, setFormData] = useState<RegisterFormData>({
     fullName: '',
     email: '',
@@ -89,332 +39,318 @@ const RegisterPage: React.FC = () => {
     password: '',
     confirmPassword: '',
     agreeToTerms: false,
-    selectedRole: 'explorer', // Default to 'explorer' (User)
+    selectedRole: 'explorer',
+  });
+  
+  const [state, setState] = useState({
+    showPassword: false,
+    showConfirmPassword: false,
+    isLoading: false,
+    error: null as string | null,
+    authMethod: 'email' as 'email' | 'phone',
+    phoneInput: '',
+    otp: '',
+    confirmationResult: null as ConfirmationResult | null,
+    toast: null as { message: string; type: 'success' | 'error' } | null,
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const target = e.target as HTMLInputElement;
-    const { name, value, type, checked } = target;
+  const recaptchaRef = useRef<HTMLDivElement>(null);
+
+  // Auto-hide toast
+  useEffect(() => {
+    if (state.toast) {
+      const timer = setTimeout(() => setState(prev => ({ ...prev, toast: null })), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [state.toast]);
+
+  // Helper functions
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setState(prev => ({ ...prev, toast: { message, type } }));
+  };
+
+  const setError = (error: string | null) => {
+    setState(prev => ({ ...prev, error }));
+  };
+
+  const setLoading = (isLoading: boolean) => {
+    setState(prev => ({ ...prev, isLoading }));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
   };
 
-  const navigate = useNavigate();
+  const createUserProfile = async (uid: string, email: string | null, phoneNumber: string | null, displayName: string | null) => {
+    try {
+      const userRef = doc(db, 'users', uid);
+      const userSnap = await getDoc(userRef);
 
-  // Helper function to create Firestore user profile after successful auth
-  const createUserProfileInFirestore = async (
-    uid: string,
-    email: string | null,
-    phoneNumber: string | null,
-    displayName: string | null
-  ) => {
-    const userDocRef = doc(db, 'users', uid);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (!userDocSnap.exists()) {
-      await setDoc(userDocRef, {
-        uid: uid,
-        email: email,
-        username: displayName || email?.split('@')[0] || phoneNumber || 'New User',
-        phoneNumber: phoneNumber,
-        role: formData.selectedRole, // Use the selected role from the form
+      const userData = {
+        uid,
+        email,
+        username: displayName || formData.fullName || email?.split('@')[0] || phoneNumber || 'New User',
+        phoneNumber,
+        role: formData.selectedRole,
         createdAt: Timestamp.now(),
         status: 'active',
-      });
-      console.log('User profile created in Firestore.');
-    } else {
-      console.log('Existing user profile found in Firestore, merging data.');
-      // Update only if phone number or role is new/different, and last login
-      await setDoc(userDocRef, {
         lastLogin: Timestamp.now(),
-        phoneNumber: phoneNumber || userDocSnap.data().phoneNumber || null,
-        role: userDocSnap.data().role || formData.selectedRole, // Keep existing role if present, otherwise set from form
-      }, { merge: true });
+      };
+
+      if (!userSnap.exists()) {
+        await setDoc(userRef, userData);
+      } else {
+        await setDoc(userRef, { lastLogin: Timestamp.now() }, { merge: true });
+      }
+    } catch (error) {
+      console.error('Error creating user profile:', error);
+      throw error;
     }
   };
 
-  // Helper function for redirection based on role
   const redirectToDashboard = (role: UserRole) => {
-    if (role === 'explorer') {
-      navigate('/user-dashboard'); // Redirect to user dashboard
-    } else if (role === 'pioneer') {
-      navigate('/business-dashboard'); // Redirect to business dashboard
-    } else {
-      // Fallback for unexpected roles or guardians (who shouldn't register directly)
-      console.warn(`Attempted to redirect user with role '${role}' to an unknown dashboard. Defaulting to login.`);
-      navigate('/login');
-    }
+    const routes = {
+      explorer: '/user-dashboard',
+      pioneer: '/business-dashboard',
+      guardian: '/login'
+    };
+    navigate(routes[role] || '/login');
   };
-// ... (Previous code including imports, state, handleChange, navigate,
-  //          createUserProfileInFirestore, and redirectToDashboard) ...
 
-  // --- Email/Password Registration (via Cloud Function) ---
+  const validateForm = () => {
+    if (!formData.agreeToTerms) {
+      setError('You must agree to the Terms of Service and Privacy Policy.');
+      return false;
+    }
+    if (formData.selectedRole === 'guardian') {
+      setError('Cannot register as a Guardian directly. Please contact support.');
+      return false;
+    }
+    return true;
+  };
+
+  // Email/Password Registration - Fixed
   const handleEmailPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError(null); // Clear form-specific errors
+    if (!validateForm()) return;
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match.');
-      setIsLoading(false);
       return;
     }
     if (formData.password.length < 8) {
       setError('Password must be at least 8 characters long.');
-      setIsLoading(false);
       return;
     }
-    if (!formData.agreeToTerms) {
-      setError('You must agree to the Terms of Service and Privacy Policy.');
-      setIsLoading(false);
-      return;
-    }
-    if (formData.selectedRole === 'guardian') {
-      setError('Cannot register as a Guardian directly. Please contact support.');
-      setIsLoading(false);
-      return;
-    }
+
+    setLoading(true);
+    setError(null);
 
     try {
-      // Get projectId directly from firebaseConfig
-      const projectId = firebaseConfig.projectId;
-      if (!projectId) {
-        throw new Error('Firebase Project ID is not configured in firebase.ts');
-      }
+      // Create user with Firebase Auth directly
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        formData.email, 
+        formData.password
+      );
+      
+      const user = userCredential.user;
 
-      // Dynamically determine the Cloud Functions base URL (emulator vs. deployed)
-      // This assumes 'us-central1' is your function's region. Adjust if different.
-      const FUNCTIONS_BASE_URL = import.meta.env.PROD
-        ? `https://${projectId}.cloudfunctions.net` // Production URL
-        : `http://127.0.0.1:5001/${projectId}/us-central1`; // Local emulator URL for specific project/region
-
-      // Construct the full Cloud Function URL for signup
-      const FUNCTIONS_SIGNUP_URL = `${FUNCTIONS_BASE_URL}/signup`;
-
-      // Use the 'axios' instance imported from '../../api/axios'
-      const response = await axios.post(FUNCTIONS_SIGNUP_URL, {
-        email: formData.email,
-        password: formData.password,
-        fullName: formData.fullName,
-        phone: formData.phone,
-        selectedRole: formData.selectedRole,
+      // Update the user's display name
+      await updateProfile(user, {
+        displayName: formData.fullName
       });
 
-      console.log('Registration successful:', response.data);
-      displayToast('Account created successfully! Redirecting to dashboard...', 'success');
-      // Redirect based on the role selected in the form
-      redirectToDashboard(formData.selectedRole);
+      // Create user profile in Firestore
+      await createUserProfile(user.uid, user.email, formData.phone || null, formData.fullName);
 
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        // Log Axios error details for debugging
-        const axiosErr = err as unknown;
-        if (typeof axiosErr === 'object' && axiosErr !== null && 'response' in axiosErr && 'message' in axiosErr) {
-          // TypeScript type guard for AxiosError
-          const errorObj = axiosErr as { response?: { data?: { message?: string } }; message?: string; toJSON?: () => unknown };
-          console.error('Registration failed (Axios Error):', errorObj.response?.data || errorObj.message, errorObj.toJSON?.());
-          const errorMessage = errorObj.response?.data?.message || errorObj.message;
-          setError(errorMessage || 'An error occurred.');
-          displayToast(errorMessage || 'An error occurred.', 'error');
-        } else {
-          setError('Registration failed: An unknown error occurred.');
-          displayToast('Registration failed: An unknown error occurred.', 'error');
-        }
-      } else {
-        // Log generic error details
-        console.error('Registration failed (Unexpected Error):', err);
-        setError('Registration failed: An unexpected error occurred. Check console for details.');
-        displayToast('Registration failed: An unexpected error occurred. Please try again.', 'error');
-      }
+      showToast('Account created successfully!', 'success');
+      setTimeout(() => redirectToDashboard(formData.selectedRole), 1500);
+      
+    } catch (err: any) {
+      const errorMessages: { [key: string]: string } = {
+        'auth/email-already-in-use': 'This email is already registered. Please use a different email or sign in.',
+        'auth/weak-password': 'Password is too weak. Please use a stronger password.',
+        'auth/invalid-email': 'Please enter a valid email address.',
+        'auth/network-request-failed': 'Network error. Please check your connection.',
+      };
+      
+      const message = errorMessages[err.code] || err?.message || 'Registration failed. Please try again.';
+      setError(message);
+      showToast(message, 'error');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // --- Google Sign-up ---
+  // Google Sign-up - Simplified
   const handleGoogleSignUp = async () => {
-    setIsLoading(true);
-    setError(null);
+    if (!validateForm()) return;
 
-    if (!formData.agreeToTerms) {
-      setError('You must agree to the Terms of Service and Privacy Policy before signing up with Google.');
-      setIsLoading(false);
-      return;
-    }
-    if (formData.selectedRole === 'guardian') {
-      setError('Cannot register as a Guardian directly via Google Sign-up. Please contact support.');
-      setIsLoading(false);
-      return;
-    }
+    setLoading(true);
+    setError(null);
 
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Create or update user profile in Firestore
-      await createUserProfileInFirestore(user.uid, user.email, user.phoneNumber, user.displayName);
-
-      displayToast('Successfully signed up with Google! Redirecting to dashboard...', 'success');
-      // Redirect based on the role selected in the form
-      redirectToDashboard(formData.selectedRole);
-    } catch (err) {
-      const firebaseError = err as AuthError;
-      console.error('Google registration failed:', firebaseError.message, firebaseError.code);
-      let message = 'Google registration failed.';
-      if (firebaseError.code === 'auth/popup-closed-by-user') {
-        message = 'Google sign-in popup was closed or cancelled.';
-      } else if (firebaseError.code === 'auth/cancelled-popup-request') {
-        message = 'Google sign-in popup already open or cancelled.';
-      } else if (firebaseError.code === 'auth/account-exists-with-different-credential') {
-        message = 'An account with this email already exists using a different sign-in method. Try logging in with the existing method or linking accounts.';
-      } else if (firebaseError.code === 'auth/network-request-failed') {
-        message = 'Network error during Google sign-up. Check your internet connection.';
-      } else if (firebaseError.code === 'auth/unauthorized-domain') {
-        message = 'Google sign-in failed: Domain not authorized. Check Firebase Authentication settings.';
-      } else if (firebaseError.code === 'auth/operation-not-supported-in-this-environment') {
-        message = 'Google Sign-In is not enabled for your project or environment. Check Firebase Authentication settings.';
-      }
+      await createUserProfile(user.uid, user.email, user.phoneNumber, user.displayName);
+      showToast('Successfully signed up with Google!', 'success');
+      setTimeout(() => redirectToDashboard(formData.selectedRole), 1500);
+      
+    } catch (err: any) {
+      const errorMessages: { [key: string]: string } = {
+        'auth/popup-closed-by-user': 'Sign-in popup was closed.',
+        'auth/cancelled-popup-request': 'Sign-in was cancelled.',
+        'auth/account-exists-with-different-credential': 'Account exists with different sign-in method.',
+        'auth/network-request-failed': 'Network error. Check your connection.',
+        'auth/unauthorized-domain': 'Domain not authorized for Google sign-in.',
+      };
+      
+      const message = errorMessages[err.code] || 'Google sign-up failed. Please try again.';
       setError(message);
-      displayToast(message, 'error');
+      showToast(message, 'error');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // --- Phone Number (OTP) Sign-up - Step 1: Send OTP ---
+  // Phone OTP - Send (Fixed)
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (!validateForm()) return;
+    if (!state.phoneInput) {
+      setError('Please enter your phone number.');
+      return;
+    }
+
+    setLoading(true);
     setError(null);
 
-    if (!phoneInput) {
-      setError('Please enter your phone number.');
-      setIsLoading(false);
-      return;
-    }
-    if (!formData.agreeToTerms) {
-      setError('You must agree to the Terms of Service and Privacy Policy.');
-      setIsLoading(false);
-      return;
-    }
-    if (formData.selectedRole === 'guardian') {
-      setError('Cannot register as a Guardian directly via Phone Sign-up. Please contact support.');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      if (!recaptchaContainerRef.current) {
-        throw new Error("reCAPTCHA container not found. It's required for phone authentication.");
+      // Clear existing recaptcha
+      if ((window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier.clear();
       }
 
-      // Clear any existing reCAPTCHA instance before creating a new one
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
+      if (!recaptchaRef.current) {
+        throw new Error('reCAPTCHA container not found.');
       }
 
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
-        'size': 'invisible', // Can be 'normal' for a visible captcha
-        'callback': (response: unknown) => {
-          console.log('reCAPTCHA solved:', response);
-          // reCAPTCHA is solved, proceed with sending OTP
-        },
+      // Create new RecaptchaVerifier
+      const recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaRef.current, {
+        size: 'invisible',
+        callback: () => console.log('reCAPTCHA solved'),
         'expired-callback': () => {
-          console.warn('reCAPTCHA expired.');
-          const msg = 'reCAPTCHA expired. Please try again.';
-          setError(msg);
-          displayToast(msg, 'error');
-          setIsLoading(false);
+          setError('reCAPTCHA expired. Please try again.');
+          setLoading(false);
         }
       });
 
-      // Execute reCAPTCHA verification
-      await window.recaptchaVerifier.verify();
+      (window as any).recaptchaVerifier = recaptchaVerifier;
 
-      const confirmation = await signInWithPhoneNumber(auth, phoneInput, window.recaptchaVerifier);
-      setConfirmationResult(confirmation);
-      displayToast('OTP sent to your phone! Please enter it below.', 'success');
-    } catch (err) {
-      const firebaseError = err as AuthError;
-      console.error('Error sending OTP:', firebaseError.message, firebaseError.code);
-      let message = 'Failed to send OTP.';
-      if (firebaseError.code === 'auth/too-many-requests') {
-        message = 'Too many requests. Please try again later.';
-      } else if (firebaseError.code === 'auth/invalid-phone-number') {
-        message = 'Invalid phone number format. Please include country code (e.g., +2376xxxxxxxxx).';
-      } else if (firebaseError.code === 'auth/quota-exceeded') {
-        message = 'SMS quota exceeded. Please try again later.';
-      } else if (firebaseError.code === 'auth/web-storage-unsupported') {
-        message = 'Browser storage is disabled or unavailable, which is required for reCAPTCHA.';
-      } else if (firebaseError.code === 'auth/missing-phone-number') {
-        message = 'Phone number is missing.';
-      } else if (firebaseError.code === 'auth/captcha-check-failed') {
-        message = 'reCAPTCHA verification failed. Please try again.';
-      }
+      const confirmation = await signInWithPhoneNumber(auth, state.phoneInput, recaptchaVerifier);
+      setState(prev => ({ ...prev, confirmationResult: confirmation }));
+      showToast('OTP sent to your phone!', 'success');
+      
+    } catch (err: any) {
+      const errorMessages: { [key: string]: string } = {
+        'auth/too-many-requests': 'Too many requests. Please try again later.',
+        'auth/invalid-phone-number': 'Invalid phone number format. Include country code (+237xxxxxxxxx).',
+        'auth/quota-exceeded': 'SMS quota exceeded. Please try again later.',
+        'auth/captcha-check-failed': 'reCAPTCHA verification failed.',
+      };
+      
+      const message = errorMessages[err.code] || 'Failed to send OTP. Please try again.';
       setError(message);
-      displayToast(message, 'error');
+      showToast(message, 'error');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // --- Phone Number (OTP) Sign-up - Step 2: Verify OTP ---
+  // Phone OTP - Verify (Fixed)
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (!state.otp) {
+      setError('Please enter the OTP.');
+      return;
+    }
+    if (!state.confirmationResult) {
+      setError('No OTP was sent. Please send OTP first.');
+      return;
+    }
+
+    setLoading(true);
     setError(null);
 
-    if (!otp) {
-      setError('Please enter the OTP.');
-      setIsLoading(false);
-      return;
-    }
-    if (!confirmationResult) {
-      setError('No OTP was sent. Please send OTP first.');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const result = await confirmationResult.confirm(otp);
+      const result = await state.confirmationResult.confirm(state.otp);
       const user = result.user;
 
-      // Create or update user profile in Firestore
-      await createUserProfileInFirestore(user.uid, user.email, user.phoneNumber, formData.fullName);
+      // Update profile with full name
+      await updateProfile(user, {
+        displayName: formData.fullName
+      });
 
-      displayToast('Phone number verified and account created! Redirecting to dashboard...', 'success');
-      // Redirect based on the role selected in the form
-      redirectToDashboard(formData.selectedRole);
-    } catch (err) {
-      const firebaseError = err as AuthError;
-      console.error('Error verifying OTP:', firebaseError.message, firebaseError.code);
-      let message = 'Failed to verify OTP.';
-      if (firebaseError.code === 'auth/invalid-verification-code') {
-        message = 'Invalid OTP. Please check the code and try again.';
-      } else if (firebaseError.code === 'auth/code-expired') {
-        message = 'The OTP has expired. Please request a new one.';
-      } else if (firebaseError.code === 'auth/user-disabled') {
-        message = 'This user account has been disabled.';
-      }
+      await createUserProfile(user.uid, user.email, user.phoneNumber, formData.fullName);
+      showToast('Phone verified and account created!', 'success');
+      setTimeout(() => redirectToDashboard(formData.selectedRole), 1500);
+      
+    } catch (err: any) {
+      const errorMessages: { [key: string]: string } = {
+        'auth/invalid-verification-code': 'Invalid OTP. Please check and try again.',
+        'auth/code-expired': 'OTP has expired. Please request a new one.',
+      };
+      
+      const message = errorMessages[err.code] || 'Failed to verify OTP. Please try again.';
       setError(message);
-      displayToast(message, 'error');
+      showToast(message, 'error');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
+  };
+
+  const resetPhoneAuth = () => {
+    setState(prev => ({
+      ...prev,
+      authMethod: 'email',
+      confirmationResult: null,
+      phoneInput: '',
+      otp: '',
+      error: null
+    }));
+    if ((window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier.clear();
+    }
+  };
+
+  const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
+    setState(prev => ({
+      ...prev,
+      [field === 'password' ? 'showPassword' : 'showConfirmPassword']: 
+        !prev[field === 'password' ? 'showPassword' : 'showConfirmPassword']
+    }));
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       {/* Toast Notification */}
-      {showToast && toastMessage && (
-        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg flex items-center space-x-2 z-50
-          ${toastType === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
-          {toastType === 'success' ? <CheckCircle className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
-          <p className="text-sm font-medium">{toastMessage}</p>
-          <button onClick={() => setShowToast(false)} className="ml-auto p-1 rounded-full hover:bg-white hover:bg-opacity-20">
+      {state.toast && (
+        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg flex items-center space-x-2 z-50 ${
+          state.toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`}>
+          {state.toast.type === 'success' ? <CheckCircle className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+          <p className="text-sm font-medium">{state.toast.message}</p>
+          <button 
+            onClick={() => setState(prev => ({ ...prev, toast: null }))} 
+            className="ml-2 hover:bg-white hover:bg-opacity-20 rounded p-1"
+          >
             <XCircle className="h-4 w-4" />
           </button>
         </div>
@@ -426,6 +362,7 @@ const RegisterPage: React.FC = () => {
             <span className="text-2xl font-bold text-white">TH</span>
           </div>
         </Link>
+        
         <h2 className="text-center text-3xl font-bold text-gray-900 flex items-center justify-center relative">
           <Link to="/" className="absolute left-0 top-1/2 -translate-y-1/2 ml-4 text-gray-600 hover:text-gray-900">
             <ArrowLeft className="w-6 h-6" />
@@ -437,164 +374,87 @@ const RegisterPage: React.FC = () => {
 
       <div className="mt-2 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow-md rounded-lg sm:px-10">
-          {error && (
+          {state.error && (
             <div className="text-red-600 text-sm text-center p-2 border border-red-300 rounded-md bg-red-50 mb-4">
-              {error}
+              {state.error}
             </div>
           )}
 
-          <p className="mt-2 mb-4 text-center text-md font-semibold text-gray-700">
-            Sign Up as
-          </p>
+          <p className="mt-2 mb-4 text-center text-md font-semibold text-gray-700">Sign Up as</p>
 
+          {/* Role Selection */}
           <div className="mb-6 flex justify-center space-x-4">
-            <Button
-              type="button"
-              variant={formData.selectedRole === 'explorer' ? 'default' : 'outline'}
-              className="px-6 py-2"
-              onClick={() => setFormData(prev => ({ ...prev, selectedRole: 'explorer' }))}
-            >
-              User
-            </Button>
-            <Button
-              type="button"
-              variant={formData.selectedRole === 'pioneer' ? 'default' : 'outline'}
-              className="px-6 py-2"
-              onClick={() => setFormData(prev => ({ ...prev, selectedRole: 'pioneer' }))}
-            >
-              Business
-            </Button>
+            {(['explorer', 'pioneer'] as const).map((role) => (
+              <Button
+                key={role}
+                type="button"
+                variant={formData.selectedRole === role ? 'default' : 'outline'}
+                className="px-6 py-2"
+                onClick={() => setFormData(prev => ({ ...prev, selectedRole: role }))}
+              >
+                {role === 'explorer' ? 'User' : 'Business'}
+              </Button>
+            ))}
           </div>
 
-          {authMethod === 'email' && (
-            <form className="space-y-6" onSubmit={handleEmailPasswordSubmit}>
-              <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
-                  Full Name
-                </label>
-                <div className="mt-1 relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
+          {/* Email Registration Form */}
+          {state.authMethod === 'email' && (
+            <form onSubmit={handleEmailPasswordSubmit} className="space-y-6">
+              {/* Input Fields */}
+              {[
+                { name: 'fullName', type: 'text', icon: User, placeholder: 'John Doe', label: 'Full Name', required: true },
+                { name: 'email', type: 'email', icon: Mail, placeholder: 'you@example.com', label: 'Email', required: true },
+                { name: 'phone', type: 'tel', icon: Phone, placeholder: '+237 6XX XXX XXX', label: 'Phone (Optional)', required: false },
+              ].map(({ name, type, icon: Icon, placeholder, label, required }) => (
+                <div key={name}>
+                  <label htmlFor={name} className="block text-sm font-medium text-gray-700">{label}</label>
+                  <div className="mt-1 relative">
+                    <Icon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                    <input
+                      id={name}
+                      name={name}
+                      type={type}
+                      required={required}
+                      value={formData[name as keyof RegisterFormData] as string}
+                      onChange={handleInputChange}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                      placeholder={placeholder}
+                    />
                   </div>
-                  <input
-                    id="fullName"
-                    name="fullName"
-                    type="text"
-                    required
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="John Doe"
-                  />
                 </div>
-              </div>
+              ))}
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email address
-                </label>
-                <div className="mt-1 relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
+              {/* Password Fields */}
+              {[
+                { name: 'password', label: 'Password', show: state.showPassword },
+                { name: 'confirmPassword', label: 'Confirm Password', show: state.showConfirmPassword }
+              ].map(({ name, label, show }) => (
+                <div key={name}>
+                  <label htmlFor={name} className="block text-sm font-medium text-gray-700">{label}</label>
+                  <div className="mt-1 relative">
+                    <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                    <input
+                      id={name}
+                      name={name}
+                      type={show ? 'text' : 'password'}
+                      required
+                      value={formData[name as keyof RegisterFormData] as string}
+                      onChange={handleInputChange}
+                      className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility(name as 'password' | 'confirmPassword')}
+                      className="absolute right-3 top-2.5"
+                    >
+                      {show ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
+                    </button>
                   </div>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="you@example.com"
-                  />
                 </div>
-              </div>
+              ))}
 
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  Phone Number (Optional for Email/Password)
-                </label>
-                <div className="mt-1 relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Phone className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="+237 6XX XXX XXX"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <div className="mt-1 relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="appearance-none block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                  Confirm Password
-                </label>
-                <div className="mt-1 relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    required
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="appearance-none block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
+              {/* Terms Agreement */}
               <div className="flex items-center">
                 <input
                   id="agreeToTerms"
@@ -602,159 +462,115 @@ const RegisterPage: React.FC = () => {
                   type="checkbox"
                   required
                   checked={formData.agreeToTerms}
-                  onChange={handleChange}
+                  onChange={handleInputChange}
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
                 />
                 <label htmlFor="agreeToTerms" className="ml-2 block text-sm text-gray-700">
                   I agree to the{' '}
-                  <Link to="/terms" className="text-primary hover:text-primary-dark" target="_blank" rel="noopener noreferrer">
-                    Terms of Service
-                  </Link>{' '}
-                  and{' '}
-                  <Link to="/privacy" className="text-primary hover:text-primary-dark" target="_blank" rel="noopener noreferrer">
-                    Privacy Policy
-                  </Link>
+                  <Link to="/terms" className="text-primary hover:text-primary-dark" target="_blank">Terms</Link>
+                  {' '}and{' '}
+                  <Link to="/privacy" className="text-primary hover:text-primary-dark" target="_blank">Privacy Policy</Link>
                 </label>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full flex justify-center py-2 px-4"
-                isLoading={isLoading}
-              >
-                {!isLoading && <ArrowRight className="w-5 h-5 mr-2" />}
+              <Button type="submit" className="w-full flex justify-center py-2 px-4" isLoading={state.isLoading}>
+                {!state.isLoading && <ArrowRight className="w-5 h-5 mr-2" />}
                 Register with Email
               </Button>
             </form>
           )}
 
-          {authMethod === 'phone' && (
-            <form className="space-y-6" onSubmit={e => e.preventDefault()}>
+          {/* Phone Registration Form */}
+          {state.authMethod === 'phone' && (
+            <div className="space-y-6">
+              {/* Full Name */}
               <div>
-                <label htmlFor="fullNamePhone" className="block text-sm font-medium text-gray-700">
-                  Full Name
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Full Name</label>
                 <div className="mt-1 relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
+                  <User className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                   <input
-                    id="fullNamePhone"
                     name="fullName"
                     type="text"
                     required
                     value={formData.fullName}
-                    onChange={handleChange}
-                    className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
+                    onChange={handleInputChange}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
                     placeholder="John Doe"
                   />
                 </div>
               </div>
 
-              {!confirmationResult ? (
-                <>
-                  <div>
-                    <label htmlFor="phoneInput" className="block text-sm font-medium text-gray-700">
-                      Phone Number
-                    </label>
+              {!state.confirmationResult ? (
+                <form onSubmit={handleSendOtp}>
+                  {/* Phone Input */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Phone Number</label>
                     <div className="mt-1 relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Phone className="h-5 w-5 text-gray-400" />
-                      </div>
+                      <Phone className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                       <input
-                        id="phoneInput"
-                        name="phoneInput"
                         type="tel"
-                        value={phoneInput}
-                        onChange={(e) => setPhoneInput(e.target.value)}
-                        className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
+                        value={state.phoneInput}
+                        onChange={(e) => setState(prev => ({ ...prev, phoneInput: e.target.value }))}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
                         placeholder="+237 6XX XXX XXX"
                         required
                       />
                     </div>
                   </div>
-                  <div className="flex items-center">
+
+                  {/* Terms Agreement */}
+                  <div className="flex items-center mb-4">
                     <input
-                      id="agreeToTermsPhone"
                       name="agreeToTerms"
                       type="checkbox"
                       required
                       checked={formData.agreeToTerms}
-                      onChange={handleChange}
+                      onChange={handleInputChange}
                       className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
                     />
-                    <label htmlFor="agreeToTermsPhone" className="ml-2 block text-sm text-gray-700">
+                    <label className="ml-2 block text-sm text-gray-700">
                       I agree to the{' '}
-                      <Link to="/terms" className="text-primary hover:text-primary-dark" target="_blank" rel="noopener noreferrer">
-                        Terms of Service
-                      </Link>{' '}
-                      and{' '}
-                      <Link to="/privacy" className="text-primary hover:text-primary-dark" target="_blank" rel="noopener noreferrer">
-                        Privacy Policy
-                      </Link>
+                      <Link to="/terms" className="text-primary hover:text-primary-dark" target="_blank">Terms</Link>
+                      {' '}and{' '}
+                      <Link to="/privacy" className="text-primary hover:text-primary-dark" target="_blank">Privacy Policy</Link>
                     </label>
                   </div>
-                  <Button
-                    type="button"
-                    className="w-full flex justify-center py-2 px-4"
-                    onClick={handleSendOtp}
-                    isLoading={isLoading}
-                  >
+
+                  <Button type="submit" className="w-full" isLoading={state.isLoading}>
                     Send OTP
                   </Button>
-                </>
+                </form>
               ) : (
-                <>
-                  <div>
-                    <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
-                      Enter OTP
-                    </label>
-                    <div className="mt-1 relative">
-                      <input
-                        id="otp"
-                        name="otp"
-                        type="text"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                        className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
-                        placeholder="••••••"
-                        required
-                      />
-                    </div>
+                <form onSubmit={handleVerifyOtp}>
+                  {/* OTP Input */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Enter OTP</label>
+                    <input
+                      type="text"
+                      value={state.otp}
+                      onChange={(e) => setState(prev => ({ ...prev, otp: e.target.value }))}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                      placeholder="••••••"
+                      required
+                    />
                   </div>
-                  <Button
-                    type="button"
-                    className="w-full flex justify-center py-2 px-4"
-                    onClick={handleVerifyOtp}
-                    isLoading={isLoading}
-                  >
+                  <Button type="submit" className="w-full" isLoading={state.isLoading}>
                     Verify OTP
                   </Button>
-                </>
+                </form>
               )}
-              {/* This div is crucial for reCAPTCHA to render correctly */}
-              <div id="recaptcha-container" ref={recaptchaContainerRef} className="mt-4"></div>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setAuthMethod('email');
-                  setConfirmationResult(null);
-                  setPhoneInput('');
-                  setOtp('');
-                  setError(null);
-                  if (window.recaptchaVerifier) {
-                    window.recaptchaVerifier.clear(); // Clear reCAPTCHA when switching away
-                  }
-                }}
-              >
+
+              {/* reCAPTCHA container */}
+              <div ref={recaptchaRef}></div>
+
+              <Button type="button" variant="outline" className="w-full" onClick={resetPhoneAuth}>
                 <ArrowLeft className="h-5 w-5 mr-2" />
                 Back to Email Registration
               </Button>
-            </form>
+            </div>
           )}
 
+          {/* Alternative Auth Methods */}
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -771,26 +587,23 @@ const RegisterPage: React.FC = () => {
                 variant="outline"
                 className="w-full"
                 onClick={handleGoogleSignUp}
-                isLoading={isLoading}
+                isLoading={state.isLoading}
               >
-                {!isLoading && <Globe className="w-5 h-5 mr-2" />}
+                {!state.isLoading && <Globe className="w-5 h-5 mr-2" />}
                 Sign Up with Google
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setAuthMethod('phone');
-                  setError(null);
-                  if (window.recaptchaVerifier) {
-                    window.recaptchaVerifier.clear();
-                  }
-                }}
-              >
-                <Phone className="w-5 h-5 mr-2" />
-                Sign Up with Phone Number
-              </Button>
+              
+              {state.authMethod === 'email' && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setState(prev => ({ ...prev, authMethod: 'phone' }))}
+                >
+                  <Phone className="w-5 h-5 mr-2" />
+                  Sign Up with Phone Number
+                </Button>
+              )}
             </div>
           </div>
 
