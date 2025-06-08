@@ -39,12 +39,12 @@ const LoginPage: React.FC = () => {
           // Verify OTP
           await confirmationResult.confirm(formData.otp);
           console.log('Phone login success!');
-          navigate('/dashboard'); // Example navigation
+          navigate('../dashboard'); // Example navigation
         } else {
           // Send OTP
           // Ensure recaptcha-container is visible and has a ref for RecaptchaVerifier
           const appVerifier = new RecaptchaVerifier(
-            'recaptcha-container',
+            'recaptcha-container', // container ID as string
             {
               size: 'invisible', // Can be 'normal' for visible widget
               callback: (response: unknown) => {
@@ -59,7 +59,7 @@ const LoginPage: React.FC = () => {
                 setIsLoading(false); // Stop loading if reCAPTCHA expires
               }
             },
-            auth
+            auth // pass the auth instance as the third argument
           );
 
           await appVerifier.verify(); // Explicitly verify reCAPTCHA
