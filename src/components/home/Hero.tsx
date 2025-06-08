@@ -11,7 +11,6 @@ const Hero: React.FC = () => {
   // Animated counter for -30%
   const [percent, setPercent] = useState(0);
   useEffect(() => {
-    let start = 0;
     const end = -30;
     const duration = 1200; // ms
     const steps = 60;
@@ -72,8 +71,8 @@ const Hero: React.FC = () => {
   }, [charIdx, isDeleting, typeIdx, words]);
 
   return (
-    // ADDED pt-20 HERE to push content down
-    <div className="relative min-h-[600px] flex flex-col pt-20">
+    // MODIFIED: Changed pt-20 to pt-32 to push content further down from the fixed Navbar
+    <div className="relative min-h-[600px] flex flex-col pt-32"> 
       {/* Hero Content */}
       <div className="flex flex-col items-center justify-center flex-1 text-center px-4 md:px-8 max-w-screen-lg mx-auto w-full">
         {/* Announcement Banner */}

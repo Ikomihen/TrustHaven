@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage'; // This is your content-only homepage
 import ListingDetailsPage from './pages/listings/ListingDetailsPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import BackToTopButton from './components/layout/BackToTop'; // Make sure this path is correct
 
 // Import all the new page components based on your Navbar links
 // IMPORTANT: You MUST create these files in your project at these relative paths.
@@ -142,11 +143,13 @@ function App() {
                     <Route path="*" element={<div><h1>404</h1><p>Page Not Found</p></div>} />
                     {/* ADDED ROUTES END HERE */}
                   </Routes>
+                  <BackToTopButton />
                 </main>
                 <Footer />
               </>
             }
           />
+          {/* Render the BackToTopButton here, outside of main content flow */}
         </Routes>
       </div>
     </BrowserRouter>

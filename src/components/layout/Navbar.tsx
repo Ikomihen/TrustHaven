@@ -15,12 +15,7 @@ import {
   Grid,
 } from 'lucide-react';
 
-// CORRECTED PATH for Button:
-// From src/components/layout/Navbar.tsx, to reach src/ui/Button.tsx, you need to go up two levels (..)
-// to src/, then down into ui/.
 import { Button } from '../ui/Button';
-// PATH for Logo:
-// Logo.tsx is in the same directory (src/components/layout) as Navbar.tsx, so './Logo' is correct.
 import Logo from './Logo';
 
 interface DropdownLink {
@@ -41,7 +36,7 @@ const SimpleDropdown = ({ links }: { links: DropdownLink[] }) => (
         key={link.path}
         to={link.path}
         className="flex items-start px-6 py-3 text-gray-700 hover:bg-gray-100 hover:text-pink-700 transition-all duration-200 group
-                   hover:translate-x-2 hover:shadow-md transform hover:scale-[1.01]"
+                  hover:translate-x-2 hover:shadow-md transform hover:scale-[1.01]"
       >
         {link.icon && (
           <link.icon className="w-7 h-7 mr-4 mt-0.5 text-gray-600 group-hover:text-pink-600 transition-colors duration-200 flex-shrink-0" />
@@ -68,6 +63,11 @@ const Navbar = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
+  // NEW STATES FOR SCROLL EFFECT
+  const [scrolledY, setScrolledY] = useState(0);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [shiftNavbar, setShiftNavbar] = useState(false); // true means shift up, false means normal position
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -88,6 +88,27 @@ const Navbar = () => {
     };
   }, [isMenuOpen]);
 
+  // NEW useEffect for scroll handling
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      setScrolledY(currentScrollY); // Update current scroll position for transparency logic
+
+      // Logic for shifting the navbar up/down
+      if (currentScrollY > lastScrollY && currentScrollY > 100) { // Scrolling down and past a threshold
+        setShiftNavbar(true); // Shift navbar slightly up
+      } else if (currentScrollY < lastScrollY || currentScrollY <= 100) { // Scrolling up or near the top
+        setShiftNavbar(false); // Bring navbar back to normal position
+      }
+      setLastScrollY(currentScrollY); // Update last scroll position
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [lastScrollY]); // Re-run effect when lastScrollY changes to capture direction
+
   useEffect(() => {
     // Close menu and dropdowns on route change
     setIsMenuOpen(false);
@@ -104,11 +125,11 @@ const Navbar = () => {
   };
 
   const navLinks = [
-    { name: 'Home', path: '/' }, // This path maps to src/pages/public/HomePage.tsx via router
-    { name: 'About', path: '/about' }, // This path maps to src/pages/public/About.tsx via router
+    { name: 'Home', path: '/' },
+    { name: 'About', path: '/about' },
     {
       name: 'Browse',
-      path: '/browse', // This might be a landing page for browse or handled by nested routes
+      path: '/browse',
       dropdownLinks: [
         { name: 'Categories', path: '/browse/categories', icon: List, description: 'Explore items by category.' },
         { name: 'All Listings', path: '/browse/listings', icon: Grid, description: 'View all available listings.' },
@@ -120,21 +141,31 @@ const Navbar = () => {
     },
     {
       name: 'Pricing',
-      path: '/pricing', // This might be a landing page for pricing or handled by nested routes
+      path: '/pricing',
       dropdownLinks: [
         { name: 'Standard Plans', path: '/pricing/standard', icon: CreditCard, description: 'Flexible plans to fit your individual or small team needs.' },
         { name: 'Pro Subscriptions', path: '/pricing/pro', icon: DollarSign, description: 'Unlock advanced features for growing businesses.' },
         { name: 'Custom Enterprise', path: '/pricing/enterprise', icon: Building, description: 'Tailored solutions and dedicated support for large organizations.' },
       ],
     },
-    { name: 'Contact', path: '/contact' }, // This path maps to src/pages/public/Contact.tsx via router
+    { name: 'Contact', path: '/contact' },
   ];
 
   return (
     <header className="fixed top-0 w-full z-50 mb-4">
       <div
-        className="w-full bg-white shadow-[0_4px_20px_-4px_rgba(239,68,68,0.3)] rounded-b-3xl
-                   flex items-center justify-between px-6 py-4"
+        // MODIFIED CLASSES:
+        // - Added `transition-all duration-300 ease-in-out` for smooth transitions.
+        // - Conditional background for transparency and blur: `bg-white/90 backdrop-blur-sm` when scrolled more than 50px.
+        // - Conditional transform for shifting: `-translate-y-2` (shifts up by 8px) when `shiftNavbar` is true.
+        //   `translate-y-0` (normal position) otherwise.
+        className={`w-full bg-white rounded-b-xl
+                   flex items-center justify-between px-8 py-4
+                   shadow-[0_4px_20px_-4px_rgba(239,68,68,0.3)]
+                   transition-all duration-300 ease-in-out
+                   ${scrolledY > 50 ? 'bg-white/90 backdrop-blur-sm' : ''} 
+                   ${shiftNavbar ? '-translate-y-2' : 'translate-y-0'}
+                  `}
       >
         <Link to="/" className="flex items-center" onClick={() => setIsMenuOpen(false)}>
           <Logo />
@@ -247,7 +278,7 @@ const Navbar = () => {
                   {link.dropdownLinks && (
                     <div
                       className={`overflow-hidden transition-all duration-300 ease-in-out
-                                 ${openMobileDropdown === link.path ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}
+                                ${openMobileDropdown === link.path ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}
                     >
                       <div className="pl-6 pt-2 pb-2 bg-gray-50 rounded-md">
                         <ul className="space-y-1">
