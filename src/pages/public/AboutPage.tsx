@@ -5,6 +5,18 @@ import meetup5 from '../../assets/images/meetup-5.jpg';
 import meetup6 from '../../assets/images/meetup-6.jpg';
 import HeroCarousel from '../../components/common/HeroCarousel';
 
+// Import all team member images
+import adrianImage from '../../assets/images/adrian.jpg';
+import excelImage from '../../assets/images/excel.jpg';
+import henryImage from '../../assets/images/henry.jpg';
+import nellyvoneImage from '../../assets/images/nellyvone.jpg';
+import keziahImage from '../../assets/images/keziah.jpg';
+import giselleImage from '../../assets/images/giselle.jpg';
+import noahImage from '../../assets/images/noah.jpg';
+import philipImage from '../../../../src/assets/images/philip.jpg'; // Corrected path based on typical structure
+import babsImage from '../../assets/images/babs.jpg';
+
+
 const AboutPage: React.FC = () => {
   const heroSlides = [
     {
@@ -222,7 +234,24 @@ const AboutPage: React.FC = () => {
             <div className="flex flex-col items-center shadow-md rounded-lg p-6">
               <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mb-6 shadow-md overflow-hidden">
                 <img 
-                  src="/src/assets/images/excel.jpg" 
+                  src={adrianImage} // Changed from string literal to imported variable
+                  alt="Adrian Avatar" 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-1">Ebesoh Adrian</h3>
+              <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">Chief Executive Officer</p>
+              <p className="text-gray-700 leading-relaxed text-sm max-w-xs text-center">
+                Adrian leads TrustHaven's vision and overall strategic direction.
+              </p>
+            </div>
+            
+
+            {/* Team Member 2: Adrian */}
+            <div className="flex flex-col items-center shadow-md rounded-lg p-6">
+              <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mb-6 shadow-md overflow-hidden">
+                <img 
+                  src={excelImage} // Changed from string literal to imported variable
                   alt="Excel Avatar" 
                   className="w-full h-full object-cover" 
                 />
@@ -234,27 +263,11 @@ const AboutPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Team Member 2: Adrian */}
-            <div className="flex flex-col items-center shadow-md rounded-lg p-6">
-              <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mb-6 shadow-md overflow-hidden">
-                <img 
-                  src="/src/assets/images/adrian.jpg" 
-                  alt="Adrian Avatar" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-1">Ebesoh Adrian</h3>
-              <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">Chief Executive Officer</p>
-              <p className="text-gray-700 leading-relaxed text-sm max-w-xs text-center">
-                Adrian leads TrustHaven's vision and overall strategic direction.
-              </p>
-            </div>
-
             {/* Team Member 3: Henry */}
             <div className="flex flex-col items-center shadow-md rounded-lg p-6">
               <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mb-6 shadow-md overflow-hidden">
                 <img 
-                  src="/src/assets/images/henry.jpg" 
+                  src={henryImage} // Changed from string literal to imported variable
                   alt="Henry Avatar" 
                   className="w-full h-full object-cover" 
                 />
@@ -270,7 +283,7 @@ const AboutPage: React.FC = () => {
             <div className="flex flex-col items-center shadow-md rounded-lg p-6">
               <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mb-6 shadow-md overflow-hidden">
                 <img 
-                  src="/src/assets/images/nellyvone.jpg" 
+                  src={nellyvoneImage} // Changed from string literal to imported variable
                   alt="Nellyvone Avatar" 
                   className="w-full h-full object-cover" 
                 />
@@ -286,7 +299,7 @@ const AboutPage: React.FC = () => {
             <div className="flex flex-col items-center shadow-md rounded-lg p-6">
               <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mb-6 shadow-md overflow-hidden">
                 <img 
-                  src="/src/assets/images/keziah.jpg" 
+                  src={keziahImage} // Changed from string literal to imported variable
                   alt="Keziah Avatar" 
                   className="w-full h-full object-cover" 
                 />
@@ -302,7 +315,7 @@ const AboutPage: React.FC = () => {
             <div className="flex flex-col items-center shadow-md rounded-lg p-6">
               <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mb-6 shadow-md overflow-hidden">
                 <img 
-                  src="/src/assets/images/giselle.jpg" 
+                  src={giselleImage} // Changed from string literal to imported variable
                   alt="Foven Giselle Avatar" 
                   className="w-full h-full object-cover" 
                 />
@@ -318,7 +331,7 @@ const AboutPage: React.FC = () => {
             <div className="flex flex-col items-center shadow-md rounded-lg p-6">
               <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mb-6 shadow-md overflow-hidden">
                 <img 
-                  src="/src/assets/images/noah.jpg" 
+                  src={noahImage} // Changed from string literal to imported variable
                   alt="Noah Holion Avatar" 
                   className="w-full h-full object-cover" 
                 />
@@ -334,7 +347,7 @@ const AboutPage: React.FC = () => {
             <div className="flex flex-col items-center shadow-md rounded-lg p-6">
               <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mb-6 shadow-md overflow-hidden">
                 <img 
-                  src="/src/assets/images/philip.jpg" 
+                  src={philipImage} // Changed from string literal to imported variable
                   alt="Philippe Gael Avatar" 
                   className="w-full h-full object-cover" 
                 />
@@ -350,7 +363,7 @@ const AboutPage: React.FC = () => {
             <div className="flex flex-col items-center shadow-md rounded-lg p-6">
               <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mb-6 shadow-md overflow-hidden">
                 <img 
-                  src="/src/assets/images/babs.jpg" 
+                  src={babsImage} // Changed from string literal to imported variable
                   alt="Baboule Bonneck Avatar" 
                   className="w-full h-full object-cover" 
                 />
