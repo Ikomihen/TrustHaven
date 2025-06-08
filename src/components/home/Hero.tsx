@@ -1,18 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Search, MapPin, ChevronDown } from 'lucide-react';
 import { Button } from '../ui/Button';
-import Logo from '../layout/Logo';
 import { Link } from 'react-router-dom';
 import './partners-float.css';
 
-const Hero: React.FC = () => {
-  const popularSearches = ['Apartments', 'Used Cars', 'Web Design', 'Restaurants', 'Plumbers'];
+const Hero = () => {
+  // Removed unused declaration
+  // const popularSearches = ['Apartments', 'Used Cars', 'Web Design', 'Restaurants', 'Plumbers'];
 
   // Animated counter for -30%
   const [percent, setPercent] = useState(0);
-  useEffect(() => {
-    let start = 0;
-    const end = -30;
+  useEffect(() => { // Changed from let to const
+    const end = -80;
     const duration = 1200; // ms
     const steps = 60;
     const stepTime = duration / steps;
@@ -30,7 +29,7 @@ const Hero: React.FC = () => {
   }, []);
 
   // Typewriter animation for headline
-  const words = ['Listings', 'Businesses', 'Services'];
+  const words = useMemo(() => ['Listings', 'Businesses', 'Services'], []); // Wrapped in useMemo
   const [typeIdx, setTypeIdx] = useState(0);
   const [displayText, setDisplayText] = useState(words[0]);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -85,7 +84,8 @@ const Hero: React.FC = () => {
         </div>
         {/* Headline */}
         <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-4 leading-tight">
-          Find Trusted <span className="text-primary transition-colors duration-300">{displayText}</span><br />
+          Find Trusted <br className="block md:hidden" />
+          <span className="text-primary transition-colors duration-300">{displayText}</span><br />
           In Cameroon
         </h1>
         {/* Subheadline */}

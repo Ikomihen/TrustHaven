@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage';
 import ListingDetailsPage from './pages/listings/ListingDetailsPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import AboutPage from './pages/public/AboutPage';
 
 // Define CSS variables for our theme
 const AppStyles = () => (
@@ -83,6 +84,7 @@ function App() {
                   <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/listing/:id" element={<ListingDetailsPage />} />
+                    <Route path="/about" element={<AboutPage />} />
                   </Routes>
                 </main>
                 <Footer />

@@ -68,7 +68,7 @@ const TestimonialCard: React.FC<{ testimonial: Testimonial }> = ({ testimonial }
       <div className="relative flex-1">
         <Quote className="absolute -top-2 -left-2 w-6 h-6 text-primary opacity-20" />
         <p className="text-gray-700 italic relative z-10">
-          "{testimonial.text}"
+          &quot;{testimonial.text}&quot;
         </p>
       </div>
       

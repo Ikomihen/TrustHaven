@@ -19,7 +19,7 @@ import {
 import { doc, setDoc, Timestamp, getDoc } from 'firebase/firestore';
 // Import auth, db, AND firebaseConfig from your firebase.ts file
 // Ensure this path (../../../firebase/firebase) is correct relative to RegisterPage.tsx
-import { auth, db } from '../../../firebase/firebase';
+import { app, auth, db } from '../../firebase/firebase.ts';
 import { UserRole } from '../../types'; // Ensure you have this type defined, e.g., export type UserRole = 'explorer' | 'pioneer' | 'guardian';
 
 // Define a type for your form data

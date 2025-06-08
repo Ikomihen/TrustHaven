@@ -11,7 +11,7 @@ import {
   signInWithPhoneNumber,
   ConfirmationResult,
 } from 'firebase/auth';
-import { app } from '../../../firebase/firebase'; // Adjust the path if needed to your firebase.js or firebase.ts file
+import { app, auth } from '../../firebase/firebase';
 
 const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +26,6 @@ const LoginPage: React.FC = () => {
   });
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const navigate = useNavigate();
-  const auth = getAuth(app);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,7 +123,7 @@ const LoginPage: React.FC = () => {
           {isPhoneAuth ? 'Login with Phone' : 'Welcome back'}
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link to="/register" className="text-primary hover:text-primary-dark">
             Sign up
           </Link>

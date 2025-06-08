@@ -7,8 +7,7 @@ import {
   Mail,
   Phone,
   MapPin,
-  ArrowRight,
-  Send // Changed ArrowRight to Send for newsletter button, feels more appropriate
+  Send
 } from 'lucide-react';
 import Logo from './Logo'; // Assuming Logo is a component for your brand logo
 import { Button } from '../ui/Button'; // Assuming you have a Button component

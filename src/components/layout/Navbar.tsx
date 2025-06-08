@@ -29,26 +29,27 @@ interface DropdownLink {
 // Reusable SimpleDropdown component (Desktop)
 const SimpleDropdown = ({ links }: { links: DropdownLink[] }) => (
   <div
-    className="absolute left-0 mt-4 w-[30rem] bg-white rounded-lg shadow-xl py-4 z-50
+    className="absolute left-0 mt-4 w-[30rem] bg-white rounded-xl shadow-lg py-4 z-50
                opacity-0 invisible group-hover:opacity-100 group-hover:visible
-               transition-all duration-300 ease-out transform origin-top scale-y-0 translate-y-2 group-hover:scale-y-100 group-hover:translate-y-0"
+               transition-all duration-300 ease-out transform origin-top scale-y-0 translate-y-2 group-hover:scale-y-100 group-hover:translate-y-0
+               border border-gray-100"
   >
     {links.map((link) => (
       <Link
         key={link.path}
         to={link.path}
-        className="flex items-start px-6 py-3 text-gray-700 hover:bg-pink-50 hover:text-pink-700 transition-all duration-200 group
-                   hover:translate-x-2 hover:shadow-md transform hover:scale-[1.01]"
+        className="flex items-start px-6 py-3 text-gray-700 hover:bg-primary/5 hover:text-primary transition-all duration-200 group
+                   hover:translate-x-2 hover:shadow-sm transform hover:scale-[1.01]"
       >
         {link.icon && (
-          <link.icon className="w-7 h-7 mr-4 mt-0.5 text-gray-600 group-hover:text-pink-600 transition-colors duration-200 flex-shrink-0" />
+          <link.icon className="w-7 h-7 mr-4 mt-0.5 text-gray-600 group-hover:text-primary transition-colors duration-200 flex-shrink-0" />
         )}
         <div>
-          <span className="block text-lg font-bold text-gray-800 group-hover:text-pink-600 transition-colors duration-200">
+          <span className="block text-lg font-bold text-gray-800 group-hover:text-primary transition-colors duration-200">
             {link.name}
           </span>
           {link.description && (
-            <span className="block text-base text-gray-500 mt-1 leading-normal">
+            <span className="block text-base text-gray-500 mt-1 leading-normal group-hover:text-gray-600">
               {link.description}
             </span>
           )}
@@ -152,7 +153,7 @@ const Navbar = () => {
           <Link to="/start-for-free">
             <Button
               variant="default"
-              className="bg-pink-500 hover:bg-pink-600 text-white font-bold
+              className="bg-primary hover:bg-primary-dark text-white font-bold
                          py-3 px-8 rounded-full text-base tracking-wide
                          transition-colors duration-200"
             >
@@ -211,22 +212,22 @@ const Navbar = () => {
                     className={`overflow-hidden transition-all duration-300 ease-in-out
                                ${openMobileDropdown === link.path ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}
                   >
-                    <div className="pl-6 pt-2 pb-2 bg-gray-50 rounded-md">
+                    <div className="pl-6 pt-2 pb-2 bg-gray-50 rounded-lg border border-gray-100">
                       <ul className="space-y-1">
                         {link.dropdownLinks.map((subLink) => (
                           <li key={subLink.path}>
                             <Link
                               to={subLink.path}
                               onClick={() => setIsMenuOpen(false)}
-                              className="flex items-start text-gray-700 hover:text-pink-500 hover:bg-gray-100 p-2 rounded-md text-sm transition-colors duration-200"
+                              className="flex items-start text-gray-700 hover:text-primary hover:bg-primary/5 p-2 rounded-md text-sm transition-colors duration-200"
                             >
                               {subLink.icon && (
-                                <subLink.icon className="w-4 h-4 mr-2 mt-0.5 text-gray-500 flex-shrink-0" />
+                                <subLink.icon className="w-4 h-4 mr-2 mt-0.5 text-gray-500 group-hover:text-primary flex-shrink-0" />
                               )}
                               <div>
-                                <span className="block font-medium text-gray-800">{subLink.name}</span>
+                                <span className="block font-medium text-gray-800 group-hover:text-primary">{subLink.name}</span>
                                 {subLink.description && (
-                                  <span className="block text-xs text-gray-500 leading-tight">
+                                  <span className="block text-xs text-gray-500 leading-tight group-hover:text-gray-600">
                                     {subLink.description}
                                   </span>
                                 )}
@@ -246,8 +247,8 @@ const Navbar = () => {
             <Link
               to="/start-for-free"
               onClick={() => setIsMenuOpen(false)}
-              className="block w-full text-center px-4 py-3 bg-pink-500 text-white rounded-full font-bold
-                         transition-colors duration-200 hover:bg-pink-600"
+              className="block w-full text-center px-4 py-3 bg-primary text-white rounded-full font-bold
+                         transition-colors duration-200 hover:bg-primary-dark"
             >
               Start for free
             </Link>

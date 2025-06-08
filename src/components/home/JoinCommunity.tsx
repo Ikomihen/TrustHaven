@@ -1,5 +1,5 @@
 import React from 'react';
-import { Facebook, Twitter, Linkedin, Users, MessageCircle } from 'lucide-react';
+import { Facebook, Twitter, Linkedin, MessageCircle } from 'lucide-react';
 
 const platforms = [
   {
