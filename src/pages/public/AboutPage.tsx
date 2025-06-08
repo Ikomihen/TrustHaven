@@ -13,7 +13,7 @@ import nellyvoneImage from '../../assets/images/nellyvone.jpg';
 import keziahImage from '../../assets/images/keziah.jpg';
 import giselleImage from '../../assets/images/giselle.jpg';
 import noahImage from '../../assets/images/noah.jpg';
-import philipImage from '../../../../src/assets/images/philip.jpg'; // Corrected path based on typical structure
+import philipImage from '../../assets/images/philip.jpg'; // Corrected path based on typical structure
 import babsImage from '../../assets/images/babs.jpg';
 
 
