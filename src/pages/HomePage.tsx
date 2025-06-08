@@ -13,13 +13,12 @@ const HomePage: React.FC = () => {
     <div>
       <CoolBackground className="flex items-center justify-center text-center">
         <Hero />
-      
-      <CategorySection />
-      <FeaturedListings />
-      <HowItWorks />
-      <StepInfographic />
-      <Testimonials />
-      <JoinCommunity />
+        <CategorySection />
+        <FeaturedListings />
+        <HowItWorks />
+        <StepInfographic />
+        <Testimonials />
+        <JoinCommunity />
       </CoolBackground>
     </div>
   );
